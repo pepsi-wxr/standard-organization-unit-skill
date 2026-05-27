@@ -1,31 +1,31 @@
-# Organization Industry Reference
+# 行业领域参考
 
-Use this reference when outputting `industry` or activity domain. Prefer official registration data if available; otherwise infer from name, category fields, and business scope text.
+输出 `行业领域` 或活动领域时使用本参考。若存在官方登记数据，优先使用登记行业或经营范围；否则结合名称、分类字段和业务范围文本推断。
 
-## Broad Industry Domains
+## 推荐行业领域
 
-| Industry | Typical evidence |
+| 行业领域 | 典型证据 |
 | --- | --- |
-| Public administration | Government, party organs, legislature, CPPCC, courts, procuratorates, supervision, taxation, market regulation |
-| Public security and justice | 公安, 司法, 监狱, 戒毒, 边境管理, 应急管理, 消防 |
-| Education | 教育局, 学校, 小学, 中学, 幼儿园, 学院, 大学, 职业教育 |
-| Healthcare and social services | 医院, 卫生院, 卫健委, 疾控, 妇幼, 医保, 养老, 民政服务 |
-| Culture, sports, tourism, and media | 文化, 体育, 广播电视, 旅游, 文旅, 博物馆, 图书馆, 艺术剧院, 融媒体 |
-| Agriculture, forestry, animal husbandry, water | 农业, 农村, 林业, 草原, 畜牧, 水利, 灌溉, 农科 |
-| Transport and logistics | 交通, 公路, 道路运输, 港口, 物流, 公交, 客运 |
-| Construction and real estate | 住房城乡建设, 住建, 城建, 房产, 园区建设, 市政工程 |
-| Energy and utilities | 电力, 燃气, 供热, 供水, 排水, 水务, 能源 |
-| Finance | 银行, 保险, 证券, 金融监管, 投资, 融资担保, 小额贷款 |
-| Information technology | 大数据, 信息化, 网信, 软件, 通信, 数字化 |
-| Manufacturing and industry | 工业, 工信, 制造, 矿产, 化工, 纺织, 食品加工 |
-| Commerce and services | 商务, 市场, 供销, 餐饮, 商贸, 物业, 家政 |
-| Ecology and environment | 生态环境, 环保, 自然保护区, 湿地, 污水, 环境监测 |
-| Grassroots governance | 村委会, 居委会, 社区治理, 街道, 乡镇 |
-| Other/needs review | Insufficient or conflicting evidence |
+| 公共管理 | 政府、党委、人大、政协、法院、检察院、纪检监察、税务、市场监管、财政、发改 |
+| 公共安全与司法 | 公安、司法、监狱、戒毒、边境管理、应急管理、消防 |
+| 教育 | 教育局、学校、小学、中学、幼儿园、学院、大学、职业教育 |
+| 医疗卫生与社会服务 | 医院、卫生院、卫健委、疾控、妇幼、医保、养老、民政服务 |
+| 文化体育旅游传媒 | 文化、体育、广播电视、旅游、文旅、博物馆、图书馆、艺术剧院、融媒体 |
+| 农林牧渔水利 | 农业、农村、林业、草原、畜牧、水利、灌溉、农科 |
+| 交通运输与物流 | 交通、公路、道路运输、港口、物流、公交、客运 |
+| 住房建设与房地产 | 住房城乡建设、住建、城建、房产、园区建设、市政工程 |
+| 能源与公用事业 | 电力、燃气、供热、供水、排水、水务、能源 |
+| 金融 | 银行、保险、证券、金融监管、投资、融资担保、小额贷款 |
+| 信息技术 | 大数据、信息化、网信、软件、通信、数字化 |
+| 制造业与工业 | 工业、工信、制造、矿产、化工、纺织、食品加工 |
+| 商贸与服务 | 商务、市场、供销、餐饮、商贸、物业、家政 |
+| 生态环境 | 生态环境、环保、自然保护区、湿地、污水、环境监测 |
+| 基层治理 | 村委会、居委会、社区治理、街道、乡镇 |
+| 其它或需复核 | 证据不足或证据冲突 |
 
-## Output Rules
+## 输出规则
 
-- Use one primary industry and optionally a secondary domain when useful.
-- Do not classify parent departments and subordinate entities as the same industry just because one manages the other.
-- For `税务局`, `市场监督管理局`, `财政局`, and similar organs, use `Public administration`, not the regulated sector.
-- For companies, prefer official registration industry or business scope over name keywords.
+- 通常输出一个主行业；必要时可补充一个次级领域。
+- 不要因为一个部门管理某个行业，就把主管部门和下属实体归为同一行业。
+- `税务局`、`市场监督管理局`、`财政局` 等机关归入 `公共管理`，不要归入被监管行业。
+- 企业主体优先使用官方登记行业或经营范围，不要只看名称关键词。

@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Utilities for Chinese organization master-data standardization.
+"""中国机构主数据标准化工具。
 
-The helpers in this file are intentionally deterministic. They provide the
-repeatable parts of the skill: name normalization, unified social credit code
-validation, candidate duplicate grouping, and missing-code suggestions.
-Human or model review should still handle ambiguous organization matches.
+本文件中的辅助函数刻意保持确定性，用来完成技能中可重复执行的部分：
+机构名称规范化、统一社会信用代码校验、候选重复机构分组、缺失代码补充建议。
+存在歧义的机构匹配仍然需要人工或模型复核。
 """
 
 from __future__ import annotations
@@ -24,7 +23,7 @@ PLACEHOLDERS = {"", "0", "1", "无", "暂无", "NULL", "NAN", "NONE", "-", "--"}
 
 
 def clean_text(value: object) -> str:
-    """Normalize a scalar value for matching while preserving meaningful text."""
+    """清洗单个值，便于比对，同时保留有意义的文本。"""
     if value is None:
         return ""
     text = unicodedata.normalize("NFKC", str(value)).strip()
@@ -35,17 +34,16 @@ def clean_text(value: object) -> str:
 
 
 def strip_punctuation(value: object) -> str:
-    """Remove punctuation that commonly differs between equivalent names."""
+    """去除等价名称中常见的差异性标点。"""
     text = clean_text(value)
     return re.sub(r"[（）()【】\[\]{}《》、，,。.;；:：\"'“”‘’·\-_/\\]", "", text)
 
 
 def canonical_name(value: object) -> str:
-    """Return a comparable organization name with controlled synonym folding.
+    """返回便于比对的机构名称，并使用受控同义词归一化。
 
-    The replacement list covers common administrative-region abbreviations and
-    institution suffix variants. It deliberately avoids broad fuzzy edits that
-    would collapse numbered schools, communities, brigades, or departments.
+    替换规则覆盖常见行政区简称和机构尾缀变体。这里刻意避免宽泛模糊改写，
+    防止把带编号的学校、社区、大队、科室等不同机构误合并。
     """
     text = strip_punctuation(value)
     replacements = [
@@ -83,11 +81,10 @@ def canonical_name(value: object) -> str:
 
 
 def canonical_core(value: object) -> str:
-    """Return a stricter core name for suffix-only equivalents.
+    """返回更严格的核心名称，只处理尾缀差异导致的等价写法。
 
-    This is used for pairs such as "XX社区" and "XX社区居民委员会". It only strips
-    a small set of legal/organizational suffixes that usually refer to the same
-    grassroots or street-level unit.
+    适用于“某某社区”和“某某社区居民委员会”这类成对写法。
+    这里只处理少量通常指向同一基层或街道单位的组织尾缀。
     """
     core = canonical_name(value)
     for old, new in [
@@ -103,44 +100,43 @@ def canonical_core(value: object) -> str:
 
 
 def validate_uscc(value: object) -> dict[str, str | bool]:
-    """Validate a unified social credit code with the official check digit rule.
+    """按统一社会信用代码校验位规则进行本地校验。
 
-    This proves only that a code is structurally valid. It does not prove that
-    the code belongs to the supplied organization name.
+    这只能证明代码结构有效，不能证明该代码一定属于传入的机构名称。
     """
     raw = clean_text(value).upper()
     if raw in PLACEHOLDERS:
-        return {"clean": raw, "status": "missing", "valid": False, "expected_check_char": ""}
+        return {"clean": raw, "status": "缺失", "valid": False, "expected_check_char": ""}
     if len(raw) != 18:
-        return {"clean": raw, "status": "invalid_length", "valid": False, "expected_check_char": ""}
+        return {"clean": raw, "status": "长度不是18位", "valid": False, "expected_check_char": ""}
     bad = sorted({c for c in raw if c not in USCC_CHARS})
     if bad:
         return {
             "clean": raw,
-            "status": "invalid_characters:" + "".join(bad),
+            "status": "包含非法字符:" + "".join(bad),
             "valid": False,
             "expected_check_char": "",
         }
-    # GB 32100-style check digit: weighted sum of the first 17 characters.
+    # 统一社会信用代码校验位：对前17位字符做加权求和。
     total = sum(USCC_CHARS.index(raw[i]) * USCC_WEIGHTS[i] for i in range(17))
     expected = USCC_CHARS[(31 - total % 31) % 31]
     if raw[-1] != expected:
         return {
             "clean": raw,
-            "status": "invalid_check_digit",
+            "status": "校验位错误",
             "valid": False,
             "expected_check_char": expected,
         }
-    return {"clean": raw, "status": "valid_local", "valid": True, "expected_check_char": expected}
+    return {"clean": raw, "status": "本地校验通过", "valid": True, "expected_check_char": expected}
 
 
 def load_table(path: Path, sheet: str | None) -> list[dict[str, object]]:
-    """Load CSV or Excel rows as dictionaries, keeping values as strings."""
+    """读取逗号分隔文件或电子表格，并将每一行保留为字典。"""
     if path.suffix.lower() in {".xlsx", ".xls"}:
         try:
             import pandas as pd
         except ImportError as exc:
-            raise SystemExit("Reading Excel requires pandas/openpyxl in the active Python environment.") from exc
+            raise SystemExit("读取电子表格需要当前运行环境安装 pandas 和 openpyxl。") from exc
         frame = pd.read_excel(path, sheet_name=sheet or 0, dtype=str).fillna("")
         return frame.to_dict(orient="records")
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
@@ -148,7 +144,7 @@ def load_table(path: Path, sheet: str | None) -> list[dict[str, object]]:
 
 
 def write_csv(path: Path, rows: list[dict[str, object]]) -> None:
-    """Write UTF-8-SIG CSV so Excel opens Chinese text without mojibake."""
+    """写出带签名的 UTF-8 逗号分隔文件，方便表格软件正确打开中文。"""
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = sorted({key for row in rows for key in row.keys()})
     with path.open("w", encoding="utf-8-sig", newline="") as handle:
@@ -158,13 +154,13 @@ def write_csv(path: Path, rows: list[dict[str, object]]) -> None:
 
 
 def audit(args: argparse.Namespace) -> None:
-    """Run the full batch audit and write all result CSV files."""
+    """执行完整批量核对，并写出所有结果文件。"""
     rows = load_table(Path(args.input), args.sheet)
     out_dir = Path(args.out_dir)
     enriched: list[dict[str, object]] = []
 
     for idx, row in enumerate(rows, start=2):
-        # Excel data rows usually start at row 2 because row 1 is the header.
+        # 表格第1行通常是表头，所以数据行从第2行开始计数。
         name = row.get(args.name_col, "")
         short = row.get(args.short_col, "") if args.short_col else ""
         code = row.get(args.code_col, "") if args.code_col else ""
@@ -198,9 +194,9 @@ def audit(args: argparse.Namespace) -> None:
     summary = {
         "rows": len(enriched),
         "valid_local_uscc": sum(1 for row in enriched if row["uscc_valid_local"]),
-        "missing_uscc": sum(1 for row in enriched if row["uscc_status"] == "missing"),
+        "missing_uscc": sum(1 for row in enriched if row["uscc_status"] == "缺失"),
         "invalid_nonblank_uscc": sum(
-            1 for row in enriched if row["uscc_status"] not in {"missing", "valid_local"}
+            1 for row in enriched if row["uscc_status"] not in {"缺失", "本地校验通过"}
         ),
         "semantic_duplicate_rows": len(semantic_groups),
         "semantic_duplicate_groups": len({row["group_id"] for row in semantic_groups}),
@@ -213,17 +209,17 @@ def audit(args: argparse.Namespace) -> None:
 
 
 def find_semantic_groups(rows: list[dict[str, object]]) -> list[dict[str, object]]:
-    """Find candidate same-organization groups from normalized name evidence."""
+    """根据规范化名称证据查找候选相同机构组。"""
     buckets: dict[tuple[str, str], list[dict[str, object]]] = defaultdict(list)
     variant_buckets: dict[tuple[str, str], list[dict[str, object]]] = defaultdict(list)
     for row in rows:
         area = str(row["area_key"])
-        # Exact normalized/core matches are strong signals inside one area.
+        # 同一区域内规范化名称或核心名称完全一致，是较强信号。
         for key in ["norm_name", "core_name"]:
             value = str(row[key])
             if value:
                 buckets[(area, value)].append(row)
-        # Cross-match full names and short names to catch alias-style duplicates.
+        # 交叉比对全称和简称，用来发现别名式重复。
         for key in ["norm_name", "norm_short", "core_name", "core_short"]:
             value = str(row[key])
             if len(value) >= 6:
@@ -233,8 +229,8 @@ def find_semantic_groups(rows: list[dict[str, object]]) -> list[dict[str, object
     seen: set[tuple[int, str]] = set()
     group_id = 1
     for source, reason, confidence in [
-        (buckets, "same normalized/core name in same area", "high"),
-        (variant_buckets, "full-name/short-name normalized match in same area", "medium_high"),
+        (buckets, "同一区域内规范化名称或核心名称相同", "高"),
+        (variant_buckets, "同一区域内全称和简称规范化后互相命中", "中高"),
     ]:
         for (_area, key), members in source.items():
             ids = sorted({int(row["excel_row"]) for row in members})
@@ -263,7 +259,7 @@ def find_semantic_groups(rows: list[dict[str, object]]) -> list[dict[str, object
 
 
 def find_code_conflicts(rows: list[dict[str, object]]) -> list[dict[str, object]]:
-    """List valid codes that appear on more than one row for review."""
+    """列出出现在多行中的有效统一社会信用代码，供复核。"""
     by_code: dict[str, list[dict[str, object]]] = defaultdict(list)
     for row in rows:
         if row["uscc_valid_local"]:
@@ -282,7 +278,7 @@ def find_code_conflicts(rows: list[dict[str, object]]) -> list[dict[str, object]
                     "name": row.get("jgmc", row.get("name", "")),
                     "short_name": row.get("jgjc", row.get("short_name", "")),
                     "area": row.get("xzqymc", ""),
-                    "issue": "same valid code appears on multiple rows; verify whether same unit or data conflict",
+                    "issue": "同一有效代码出现在多行，需要核实是同一机构还是数据冲突",
                 }
             )
         group_id += 1
@@ -292,7 +288,7 @@ def find_code_conflicts(rows: list[dict[str, object]]) -> list[dict[str, object]
 def find_fill_suggestions(
     rows: list[dict[str, object]], semantic_group_rows: list[dict[str, object]]
 ) -> list[dict[str, object]]:
-    """Suggest missing codes when a semantic group has exactly one valid code."""
+    """当语义重复组内只有一个有效代码时，为缺失项提出补充建议。"""
     by_row = {int(row["excel_row"]): row for row in rows}
     by_group: dict[object, list[dict[str, object]]] = defaultdict(list)
     for row in semantic_group_rows:
@@ -303,7 +299,7 @@ def find_fill_suggestions(
         source_rows = [by_row[int(member["excel_row"])] for member in members]
         valid_codes = sorted({str(row["uscc_clean"]) for row in source_rows if row["uscc_valid_local"]})
         if len(valid_codes) != 1:
-            # Zero codes means official lookup is required; multiple codes means conflict.
+            # 没有代码时需要官方查询；多个代码时说明存在冲突。
             continue
         for row in source_rows:
             if row["uscc_valid_local"]:
@@ -315,15 +311,15 @@ def find_fill_suggestions(
                     "target_name": row.get("jgmc", row.get("name", "")),
                     "current_uscc": row.get("tyshxydm", ""),
                     "suggested_uscc": valid_codes[0],
-                    "confidence": "needs_review",
-                    "basis": "same semantic duplicate group has exactly one locally valid code",
+                    "confidence": "需复核",
+                    "basis": "同一语义重复组内只有一个本地校验通过的代码",
                 }
             )
     return suggestions
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Audit and standardize Chinese organization records.")
+    parser = argparse.ArgumentParser(description="核对并标准化中国机构记录。")
     subparsers = parser.add_subparsers(required=True)
 
     validate_parser = subparsers.add_parser("validate-code")

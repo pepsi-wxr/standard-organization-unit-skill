@@ -1,26 +1,26 @@
-# Organization Classification Reference
+# 机构分类参考
 
-Use this reference when outputting `org_category` for Chinese organization/unit master data.
+输出 `机构分类` 时使用本参考。优先使用源数据中的类型字段；名称关键词只作为辅助证据。
 
-## Broad Categories
+## 推荐大类
 
-| Category | Typical evidence |
+| 分类 | 典型证据 |
 | --- | --- |
-| Party/government organ | `人民政府`, `委员会`, `办公室`, `局`, `厅`, `委`, `人大`, `政协`, `法院`, `检察院`, `公安`, `司法`, `税务局`, `市场监督管理局`; existing type such as `党政机关` |
-| Public institution | `中心`, `站`, `所`, `院`, `馆`, `队`, `服务中心`, `管理中心`, `事业单位`; public-service institution labels |
-| State-owned enterprise | `国有`, `国投`, `城投`, `交投`, `文旅投`, `水务集团`, `燃气公司`, `供排水`; enterprise plus government ownership evidence |
-| Private or mixed-ownership enterprise | `有限公司`, `有限责任公司`, `股份有限公司`, `集团有限公司`, `合作社`; enterprise labels without clear state-owned evidence |
-| Social organization | `协会`, `学会`, `商会`, `基金会`, `联合会`, `促进会`, `民办非企业` |
-| Grassroots self-governance organization | `村民委员会`, `村委会`, `居民委员会`, `居委会`, `社区` when used as a self-governance body |
-| School or education institution | `学校`, `小学`, `中学`, `幼儿园`, `职业学校`, `学院`, `大学`, `教育局`; use government category for education bureaus |
-| Medical/health institution | `医院`, `卫生院`, `疾控中心`, `妇幼保健`, `卫生健康委员会`; use government category for health commissions |
-| Financial institution | `银行`, `信用社`, `保险`, `证券`, `金融监管`, `融资担保`, `小额贷款` |
-| Utility/public service unit | `供水`, `供热`, `燃气`, `电力`, `公交`, `环卫`, `污水处理`, `公路管理`, `市政` |
-| Other/needs review | Insufficient or conflicting evidence |
+| 党政机关 | `人民政府`、`委员会`、`办公室`、`局`、`厅`、`委`、`人大`、`政协`、`法院`、`检察院`、`公安`、`司法`、`税务局`、`市场监督管理局`；或源字段标注为 `党政机关` |
+| 事业单位 | `中心`、`站`、`所`、`院`、`馆`、`队`、`服务中心`、`管理中心`、`事业单位`；或源字段标注为事业单位 |
+| 国有企业 | `国有`、`国投`、`城投`、`交投`、`文旅投`、`水务集团`、`燃气公司`、`供排水`；企业名称同时有政府出资或国有背景证据 |
+| 民营或混合所有制企业 | `有限公司`、`有限责任公司`、`股份有限公司`、`集团有限公司`、`合作社`；没有明确国有背景的企业主体 |
+| 社会组织 | `协会`、`学会`、`商会`、`基金会`、`联合会`、`促进会`、`民办非企业` |
+| 基层群众自治组织 | `村民委员会`、`村委会`、`居民委员会`、`居委会`；作为单位记录出现的 `社区` |
+| 学校或教育机构 | `学校`、`小学`、`中学`、`幼儿园`、`职业学校`、`学院`、`大学`；教育局应归为党政机关 |
+| 医疗卫生机构 | `医院`、`卫生院`、`疾控中心`、`妇幼保健`；卫生健康委员会应归为党政机关 |
+| 金融机构 | `银行`、`信用社`、`保险`、`证券`、`金融监管`、`融资担保`、`小额贷款` |
+| 公用事业或公共服务单位 | `供水`、`供热`、`燃气`、`电力`、`公交`、`环卫`、`污水处理`、`公路管理`、`市政` |
+| 其它或需复核 | 证据不足或证据冲突 |
 
-## Tie-Breakers
+## 判断补充规则
 
-- Prefer explicit source fields (`jgdwlx_mc`, `zzjglx_mc`, `sbhmc`) over name-only inference.
-- If a name contains both a government body and a subordinate public institution, classify the actual record subject, not the parent body mentioned in the name.
-- `中心`, `站`, `所`, and `队` are ambiguous; inspect surrounding words and source fields.
-- `社区` alone may be a place label or a self-governance unit. Treat as grassroots only when the record context indicates a unit, or when paired with `居民委员会`/`居委会`.
+- 优先使用明确的源字段，例如 `jgdwlx_mc`、`zzjglx_mc`、`sbhmc`。
+- 如果名称中同时出现主管机关和下属单位，要按本条记录实际主体分类，不要按被提及的上级机构分类。
+- `中心`、`站`、`所`、`队` 都有歧义，需要结合上下文和源字段判断。
+- `社区` 可能是地点标签，也可能是基层群众自治组织。只有记录语境表明它是单位，或与 `居民委员会`、`居委会` 对应时，才归为基层群众自治组织。

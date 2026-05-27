@@ -1,93 +1,93 @@
 ---
 name: standard-organization-unit
-description: Standardize Chinese organization/unit records and compare whether institutions are semantically the same. Use when working with organization master data, institution names, unit names, aliases, administrative regions, categories, industries, unified social credit codes, duplicate detection, missing-code filling, or standard organization output for Excel/CSV/database records.
+description: 标准化中国机构、单位主数据，并判断机构或单位在含义上是否相同。适用于机构名、单位名、简称、别名、行政区划、机构分类、行业领域、统一社会信用代码、重复机构识别、缺失代码补充建议，以及电子表格、逗号分隔文件、数据库记录的标准机构输出。
 ---
 
-# Standard Organization Unit
+# 标准机构单位
 
-## Core Workflow
+## 核心流程
 
-1. Inspect the input fields before judging duplicates. Prefer columns such as full name, short name, unified social credit code, organization id, parent organization id, administrative region, address, longitude/latitude, unit type, organization type, and existing category labels.
-2. Normalize names before comparison. Remove whitespace and punctuation, convert full-width characters to half-width, normalize common abbreviations, and preserve meaningful differentiators such as sequence numbers, school numbers, village names, community names, branch names, bureau names, and office/dept suffixes.
-3. Separate conclusions into confidence levels:
-   - `high`: same valid unified social credit code with consistent name evidence, exact normalized name, or exact official full-name/short-name equivalence.
-   - `medium_high`: same administrative region plus explainable synonym/abbreviation match, such as `居民委员会` and `居委会`, `村民委员会` and `村委会`, `管理委员会` and `管委会`, or full official region name and abbreviated region name.
-   - `medium`: strong similarity but missing one of code, region, or independent field evidence.
-   - `needs_review`: conflicting valid codes, weak fuzzy match, cross-region match, or parent/subordinate organizations that share words but are not necessarily the same unit.
-4. Do not treat similar numbered units as duplicates without additional evidence. Examples: `第二小学` vs `第三小学`, `第十社区` vs `第十一社区`, `第一纪检监察组` vs `第二纪检监察组`.
-5. Output a standard organization record only with evidence and confidence. Include the original row identifiers so the user can trace each decision.
+1. 判断重复前先检查输入字段。优先使用全称、简称、统一社会信用代码、机构编号、上级机构编号、行政区划、地址、经纬度、单位类型、组织机构类型和已有分类标签。
+2. 比对前先规范化机构名称。去除空白和无意义标点，统一全角半角，归一化常见简称，同时保留有区分意义的序号、学校编号、村名、社区名、分支名、局办中心等尾缀。
+3. 结论必须分置信度：
+   - `高`：有效统一社会信用代码相同且名称证据一致；或规范化名称完全相同；或官方全称、简称明确等价。
+   - `中高`：同一行政区内存在可解释的同义或简称关系，例如 `居民委员会` 与 `居委会`、`村民委员会` 与 `村委会`、`管理委员会` 与 `管委会`、完整行政区名与简称。
+   - `中`：名称高度接近，但缺少代码、行政区或其它独立字段证据。
+   - `需复核`：有效代码冲突、弱相似、跨行政区匹配，或可能是上下级机构而非同一机构。
+4. 不要仅凭名称相似就合并带编号的机构。例如 `第二小学` 与 `第三小学`、`第十社区` 与 `第十一社区`、`第一纪检监察组` 与 `第二纪检监察组`。
+5. 输出标准机构记录时必须带证据和置信度，并保留原始行号或原始编号，便于追溯。
 
-## Standard Output
+## 标准输出
 
-Use this schema when the user asks for standard organization content:
+用户要求输出标准机构内容时，优先使用这些字段：
 
-- `standard_org_name`: recommended canonical Chinese name.
-- `aliases`: known short names and historical/alternate names.
-- `is_same_group_id`: duplicate group id when comparing records.
-- `same_org_confidence`: `high`, `medium_high`, `medium`, or `needs_review`.
-- `same_org_reason`: concise evidence for the grouping.
-- `org_category`: organization/unit category.
-- `industry`: industry or activity domain.
-- `unified_social_credit_code`: cleaned and validated unified social credit code when available.
-- `credit_code_status`: `valid_local`, `invalid_local`, `missing`, `suggested_from_same_org`, `official_lookup_required`, or `conflict`.
-- `evidence_fields`: fields used for the decision, such as `jgmc`, `jgjc`, `tyshxydm`, `xzqymc`, `jgdz`.
-- `source_rows`: source row numbers or ids.
+- `标准机构名称`：推荐的规范中文名称。
+- `别名`：简称、历史名称、其它写法。
+- `相同机构组号`：重复比对时的分组编号。
+- `相同机构置信度`：`高`、`中高`、`中` 或 `需复核`。
+- `相同机构依据`：分组或判定的简要证据。
+- `机构分类`：机构或单位类别。
+- `行业领域`：行业或活动领域。
+- `统一社会信用代码`：清洗并校验后的统一社会信用代码。
+- `信用代码状态`：`本地校验通过`、`本地校验不通过`、`缺失`、`同机构组建议补充`、`需要官方查询` 或 `冲突`。
+- `证据字段`：用于判断的字段，例如 `jgmc`、`jgjc`、`tyshxydm`、`xzqymc`、`jgdz`。
+- `来源行`：来源行号或来源编号。
 
-## Same Organization Comparison
+## 相同机构比对
 
-Use layered evidence instead of a single fuzzy score:
+使用分层证据，不要只依赖一个模糊相似度分数：
 
-1. Check unified social credit code with the deterministic validator in `scripts/org_unit_tools.py`.
-2. Compare normalized full names.
-3. Compare normalized short names against full names within the same administrative region.
-4. Apply controlled synonym rules for common government, enterprise, grassroots, and public-institution suffixes.
-5. Use address, region, coordinates, parent organization, and type fields as tie-breakers.
-6. Flag parent/subordinate pairs separately. `人民政府` and `人民政府办公室`, `委员会` and `委员会办公室`, `局` and `局属中心`, or `支队` and `大队` may share a code or name tokens but are not automatically the same organization.
+1. 用 `scripts/org_unit_tools.py` 中的确定性校验器检查统一社会信用代码。
+2. 比较规范化后的全称。
+3. 在同一行政区内比较规范化简称与全称。
+4. 对常见政府、企业、基层自治组织、事业单位尾缀使用受控同义规则。
+5. 用地址、行政区、坐标、上级机构和类型字段做辅助判断。
+6. 单独标记上下级关系。`人民政府` 与 `人民政府办公室`、`委员会` 与 `委员会办公室`、`局` 与 `局属中心`、`支队` 与 `大队` 可能共享词语或代码，但不能自动视为同一机构。
 
-For repeatable spreadsheet work, run:
+批量处理表格时运行：
 
-```bash
-python scripts/org_unit_tools.py audit input.xlsx --sheet Sheet1 --name-col jgmc --short-col jgjc --code-col tyshxydm --area-col xzqymc --out-dir output-dir
+```
+python scripts/org_unit_tools.py audit 机构数据.xlsx --sheet Sheet1 --name-col jgmc --short-col jgjc --code-col tyshxydm --area-col xzqymc --out-dir 输出目录
 ```
 
-The script produces audit, semantic duplicate candidate, code conflict, and fill suggestion CSV files.
+脚本会生成机构核对、语义重复候选、信用代码冲突、缺失代码补充建议等结果文件。
 
-## Classification
+## 机构分类
 
-For organization category output, read `references/classification.md` when the task needs a category taxonomy or mapping rules. Keep category output explainable and avoid overfitting to a single keyword when other fields contradict it.
+需要输出机构分类或类别映射规则时，读取 `references/classification.md`。分类必须可解释；当其它字段与名称关键词冲突时，不要只凭单个关键词判断。
 
-Preferred broad categories:
+推荐大类：
 
-- Party/government organ
-- Public institution
-- State-owned enterprise
-- Private or mixed-ownership enterprise
-- Social organization
-- Grassroots self-governance organization
-- School or education institution
-- Medical/health institution
-- Financial institution
-- Utility/public service unit
-- Other/needs review
+- 党政机关
+- 事业单位
+- 国有企业
+- 民营或混合所有制企业
+- 社会组织
+- 基层群众自治组织
+- 学校或教育机构
+- 医疗卫生机构
+- 金融机构
+- 公用事业或公共服务单位
+- 其它或需复核
 
-## Industry
+## 行业领域
 
-For industry/domain output, read `references/industry.md`. Output a broad industry when evidence is limited. When official business registration data is available, prefer the registered industry/business scope over name-only inference.
+需要输出行业或活动领域时，读取 `references/industry.md`。证据有限时输出宽口径行业。若存在官方登记数据，优先使用登记行业或经营范围，不要只依赖名称推断。
 
-## Unified Social Credit Code
+## 统一社会信用代码
 
-Use local validation for format and check digit. A local check can say whether a code is structurally valid; it cannot prove that the code belongs to a specific organization.
+本地校验只能判断格式和校验位是否正确，不能证明代码一定属于某个机构名称。
 
-When the code is missing:
+缺失代码时：
 
-1. If the same semantic organization group has exactly one locally valid code, output it as `suggested_from_same_org` with the source row and `needs_review` unless there is strong matching evidence.
-2. If multiple different valid codes appear in the same semantic group, mark `conflict` and do not choose automatically.
-3. If no same-group code exists, use `official_lookup_required`. For authoritative filling, search or integrate an official source such as the national unified social credit code public query platform; for enterprises, the national enterprise credit information system may also help.
-4. Never fabricate a code from an organization name.
+1. 如果同一语义机构组内只有一个本地校验通过的代码，可输出为 `同机构组建议补充`，同时给出来源行，并默认标记为 `需复核`，除非有强匹配证据。
+2. 如果同一语义机构组内存在多个不同且有效的代码，标记为 `冲突`，不要自动选择。
+3. 如果同组内没有可用代码，标记为 `需要官方查询`。权威补全应查询或接入全国组织机构统一社会信用代码公示查询平台；企业主体也可参考国家企业信用信息公示系统。
+4. 不要根据机构名称凭空编造统一社会信用代码。
 
-## Quality Rules
+## 质量规则
 
-- Preserve original data and create a reviewed output file or suggestions file rather than overwriting source columns.
-- Include row numbers and reasons for every suggested duplicate, category, industry, or code fill.
-- Prefer deterministic scripts for batch Excel/CSV analysis; use LLM judgment only for the evidence synthesis and ambiguous cases.
-- Make uncertainty explicit. It is better to mark `needs_review` than to merge two real but similarly named units.
+- 保留原始数据，生成复核文件或建议文件，不要直接覆盖源字段。
+- 每一条重复、分类、行业、代码补充建议都要包含行号和理由。
+- 批量处理电子表格或逗号分隔文件时优先使用确定性脚本；模型判断只用于证据整合和歧义场景。
+- 明确表达不确定性。把可疑项标记为 `需复核`，比误合并两个真实机构更可靠。
