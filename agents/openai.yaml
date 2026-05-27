@@ -1,0 +1,6 @@
+interface:
+  display_name: "标准机构单位"
+  short_description: "机构标准化、分类、行业和信用代码核对能力"
+  default_prompt: "Use $standard-organization-unit to standardize organization records, compare semantic duplicates, classify units, infer industries, and audit unified social credit codes."
+policy:
+  allow_implicit_invocation: true
