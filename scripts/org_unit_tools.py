@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Utilities for Chinese organization master-data standardization."""
+"""Utilities for Chinese organization master-data standardization.
+
+The helpers in this file are intentionally deterministic. They provide the
+repeatable parts of the skill: name normalization, unified social credit code
+validation, candidate duplicate grouping, and missing-code suggestions.
+Human or model review should still handle ambiguous organization matches.
+"""
 
 from __future__ import annotations
 
@@ -18,6 +24,7 @@ PLACEHOLDERS = {"", "0", "1", "无", "暂无", "NULL", "NAN", "NONE", "-", "--"}
 
 
 def clean_text(value: object) -> str:
+    """Normalize a scalar value for matching while preserving meaningful text."""
     if value is None:
         return ""
     text = unicodedata.normalize("NFKC", str(value)).strip()
@@ -28,11 +35,18 @@ def clean_text(value: object) -> str:
 
 
 def strip_punctuation(value: object) -> str:
+    """Remove punctuation that commonly differs between equivalent names."""
     text = clean_text(value)
     return re.sub(r"[（）()【】\[\]{}《》、，,。.;；:：\"'“”‘’·\-_/\\]", "", text)
 
 
 def canonical_name(value: object) -> str:
+    """Return a comparable organization name with controlled synonym folding.
+
+    The replacement list covers common administrative-region abbreviations and
+    institution suffix variants. It deliberately avoids broad fuzzy edits that
+    would collapse numbered schools, communities, brigades, or departments.
+    """
     text = strip_punctuation(value)
     replacements = [
         ("新疆维吾尔自治区", "新疆"),
@@ -69,6 +83,12 @@ def canonical_name(value: object) -> str:
 
 
 def canonical_core(value: object) -> str:
+    """Return a stricter core name for suffix-only equivalents.
+
+    This is used for pairs such as "XX社区" and "XX社区居民委员会". It only strips
+    a small set of legal/organizational suffixes that usually refer to the same
+    grassroots or street-level unit.
+    """
     core = canonical_name(value)
     for old, new in [
         ("社区居委会", "社区"),
@@ -83,6 +103,11 @@ def canonical_core(value: object) -> str:
 
 
 def validate_uscc(value: object) -> dict[str, str | bool]:
+    """Validate a unified social credit code with the official check digit rule.
+
+    This proves only that a code is structurally valid. It does not prove that
+    the code belongs to the supplied organization name.
+    """
     raw = clean_text(value).upper()
     if raw in PLACEHOLDERS:
         return {"clean": raw, "status": "missing", "valid": False, "expected_check_char": ""}
@@ -96,6 +121,7 @@ def validate_uscc(value: object) -> dict[str, str | bool]:
             "valid": False,
             "expected_check_char": "",
         }
+    # GB 32100-style check digit: weighted sum of the first 17 characters.
     total = sum(USCC_CHARS.index(raw[i]) * USCC_WEIGHTS[i] for i in range(17))
     expected = USCC_CHARS[(31 - total % 31) % 31]
     if raw[-1] != expected:
@@ -109,6 +135,7 @@ def validate_uscc(value: object) -> dict[str, str | bool]:
 
 
 def load_table(path: Path, sheet: str | None) -> list[dict[str, object]]:
+    """Load CSV or Excel rows as dictionaries, keeping values as strings."""
     if path.suffix.lower() in {".xlsx", ".xls"}:
         try:
             import pandas as pd
@@ -121,6 +148,7 @@ def load_table(path: Path, sheet: str | None) -> list[dict[str, object]]:
 
 
 def write_csv(path: Path, rows: list[dict[str, object]]) -> None:
+    """Write UTF-8-SIG CSV so Excel opens Chinese text without mojibake."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = sorted({key for row in rows for key in row.keys()})
     with path.open("w", encoding="utf-8-sig", newline="") as handle:
@@ -130,11 +158,13 @@ def write_csv(path: Path, rows: list[dict[str, object]]) -> None:
 
 
 def audit(args: argparse.Namespace) -> None:
+    """Run the full batch audit and write all result CSV files."""
     rows = load_table(Path(args.input), args.sheet)
     out_dir = Path(args.out_dir)
     enriched: list[dict[str, object]] = []
 
     for idx, row in enumerate(rows, start=2):
+        # Excel data rows usually start at row 2 because row 1 is the header.
         name = row.get(args.name_col, "")
         short = row.get(args.short_col, "") if args.short_col else ""
         code = row.get(args.code_col, "") if args.code_col else ""
@@ -183,14 +213,17 @@ def audit(args: argparse.Namespace) -> None:
 
 
 def find_semantic_groups(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Find candidate same-organization groups from normalized name evidence."""
     buckets: dict[tuple[str, str], list[dict[str, object]]] = defaultdict(list)
     variant_buckets: dict[tuple[str, str], list[dict[str, object]]] = defaultdict(list)
     for row in rows:
         area = str(row["area_key"])
+        # Exact normalized/core matches are strong signals inside one area.
         for key in ["norm_name", "core_name"]:
             value = str(row[key])
             if value:
                 buckets[(area, value)].append(row)
+        # Cross-match full names and short names to catch alias-style duplicates.
         for key in ["norm_name", "norm_short", "core_name", "core_short"]:
             value = str(row[key])
             if len(value) >= 6:
@@ -230,6 +263,7 @@ def find_semantic_groups(rows: list[dict[str, object]]) -> list[dict[str, object
 
 
 def find_code_conflicts(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    """List valid codes that appear on more than one row for review."""
     by_code: dict[str, list[dict[str, object]]] = defaultdict(list)
     for row in rows:
         if row["uscc_valid_local"]:
@@ -258,6 +292,7 @@ def find_code_conflicts(rows: list[dict[str, object]]) -> list[dict[str, object]
 def find_fill_suggestions(
     rows: list[dict[str, object]], semantic_group_rows: list[dict[str, object]]
 ) -> list[dict[str, object]]:
+    """Suggest missing codes when a semantic group has exactly one valid code."""
     by_row = {int(row["excel_row"]): row for row in rows}
     by_group: dict[object, list[dict[str, object]]] = defaultdict(list)
     for row in semantic_group_rows:
@@ -268,6 +303,7 @@ def find_fill_suggestions(
         source_rows = [by_row[int(member["excel_row"])] for member in members]
         valid_codes = sorted({str(row["uscc_clean"]) for row in source_rows if row["uscc_valid_local"]})
         if len(valid_codes) != 1:
+            # Zero codes means official lookup is required; multiple codes means conflict.
             continue
         for row in source_rows:
             if row["uscc_valid_local"]:
